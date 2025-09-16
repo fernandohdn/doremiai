@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot AI Nando</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      color: white;
+      overflow: hidden;
+      background: linear-gradient(-45deg, #000000, #002b11, #004d26, #000000);
+      background-size: 400% 400%;
+      animation: gradientMove 15s ease infinite;
+    }
+
+    @keyframes gradientMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    #chat-header {
+      background: rgba(0, 80, 40, 0.8);
+      padding: 20px;
+      font-size: 22px;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 1px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.6);
+    }
+
+    #chat-box {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+    }
+
+    .msg-row {
+      display: flex;
+      align-items: flex-end;
+      margin: 12px 0;
+    }
+
+    .msg {
+      padding: 14px 16px;
+      border-radius: 14px;
+      max-width: 70%;
+      line-height: 1.5;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      word-wrap: break-word;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    .user-row {
+      justify-content: flex-end;
+      animation: slideRight 0.4s ease;
+    }
+
+    .bot-row {
+      justify-content: flex-start;
+      animation: slideLeft 0.4s ease;
+    }
+
+    .user {
+      background: linear-gradient(135deg, #00b359, #006400);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bot {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      border-bottom-left-radius: 4px;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 18px;
+      margin: 0 8px;
+      flex-shrink: 0;
+    }
+
+    .user-avatar {
+      background: #006400;
+      color: white;
+    }
+
+    .bot-avatar {
+      background: #333;
+      color: #00ff88;
+    }
+
+    #input-area {
+      display: flex;
+      border-top: 1px solid #1a3d1a;
+      background: rgba(0, 40, 20, 0.9);
+      padding: 10px;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(4px);
+    }
+
+    #user-input {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      border-radius: 10px;
+      background: #1a1a1a;
+      color: white;
+    }
+
+    #send-btn, #file-btn {
+      background: linear-gradient(135deg, #00b359, #006400);
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: 0.3s;
+      font-size: 16px;
+    }
+
+    #send-btn:hover, #file-btn:hover {
+      background: linear-gradient(135deg, #00994d, #004d26);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .typing {
+      font-style: italic;
+      color: #aaa;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .file-preview {
+      max-width: 240px;
+      max-height: 180px;
+      display: block;
+      margin-top: 6px;
+      border-radius: 10px;
+    }
+
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(10px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+
+    @keyframes slideRight {
+      from {opacity: 0; transform: translateX(50px);}
+      to {opacity: 1; transform: translateX(0);}
+    }
+
+    @keyframes slideLeft {
+      from {opacity: 0; transform: translateX(-50px);}
+      to {opacity: 1; transform: translateX(0);}
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-header">🤖 Chatbot AI Nando</div>
+  <div id="chat-box"></div>
+  <div id="input-area">
+    <label for="file-input" id="file-btn">📎</label>
+    <input type="file" id="file-input" accept="image/*,.pdf,.txt,.doc,.docx"/>
+    <input type="text" id="user-input" placeholder="Tulis pesan...">
+    <button id="send-btn">➤</button>
+  </div>
+
+  <script>
+    const API_KEY = "AIzaSyACSidJfMSNYKI1N6SAKkUtxm92tslx8bE"; // ganti dengan API key Gemini
+    const MODEL = "gemini-1.5-flash";
+
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const fileInput = document.getElementById("file-input");
+
+    async function sendMessage(text, imageBase64 = null) {
+      if (!text && !imageBase64) return;
+
+      if (text) addMessage(text, "user");
+      if (imageBase64) {
+        const msgRow = addMessage("📷 Foto dikirim:", "user");
+        const msg = msgRow.querySelector(".msg");
+        const img = document.createElement("img");
+        img.src = imageBase64;
+        img.classList.add("file-preview");
+        msg.appendChild(img);
+      }
+      userInput.value = "";
+
+      const typingMsg = addMessage("Mengetik...", "bot", true);
+
+      try {
+        const parts = [];
+        if (text) parts.push({ text });
+        if (imageBase64) {
+          parts.push({
+            inline_data: {
+              mime_type: "image/png",
+              data: imageBase64.split(",")[1]
+            }
+          });
+        }
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ role: "user", parts }] })
+          }
+        );
+
+        const data = await response.json();
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, saya tidak bisa menjawab.";
+
+        typingMsg.remove();
+        typeEffect(reply, "bot");
+      } catch (err) {
+        console.error(err);
+        typingMsg.remove();
+        addMessage("Terjadi kesalahan, coba lagi.", "bot");
+      }
+    }
+
+    function addMessage(text, sender, isTyping = false) {
+      const row = document.createElement("div");
+      row.classList.add("msg-row", sender + "-row");
+
+      const avatar = document.createElement("div");
+      avatar.classList.add("avatar", sender + "-avatar");
+      avatar.innerText = sender === "user" ? "👤" : "🤖";
+
+      const msg = document.createElement("div");
+      msg.classList.add("msg", sender);
+      if (isTyping) msg.classList.add("typing");
+      msg.innerText = text;
+
+      if (sender === "user") {
+        row.appendChild(msg);
+        row.appendChild(avatar);
+      } else {
+        row.appendChild(avatar);
+        row.appendChild(msg);
+      }
+
+      chatBox.appendChild(row);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return row;
+    }
+
+    function typeEffect(text, sender) {
+      const row = document.createElement("div");
+      row.classList.add("msg-row", sender + "-row");
+
+      const avatar = document.createElement("div");
+      avatar.classList.add("avatar", sender + "-avatar");
+      avatar.innerText = sender === "user" ? "👤" : "🤖";
+
+      const msg = document.createElement("div");
+      msg.classList.add("msg", sender);
+
+      if (sender === "user") {
+        row.appendChild(msg);
+        row.appendChild(avatar);
+      } else {
+        row.appendChild(avatar);
+        row.appendChild(msg);
+      }
+      chatBox.appendChild(row);
+
+      let i = 0;
+      const interval = setInterval(() => {
+        msg.innerText = text.slice(0, i++);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        if (i > text.length) clearInterval(interval);
+      }, 18);
+    }
+
+    sendBtn.addEventListener("click", () => sendMessage(userInput.value));
+    userInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage(userInput.value);
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          sendMessage("", event.target.result);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        addMessage(`📎 File dikirim: ${file.name}`, "user");
+      }
+      fileInput.value = "";
+    });
+  </script>
+</body>
+</html>
