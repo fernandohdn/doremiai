@@ -1,282 +1,493 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CHATBOT BUATAN NANDO XII TPM 1</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DoremiAI ChatBot Buatan Nando</title>
   <style>
-    body {
-      font-family: "Poppins", sans-serif;
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      color: white;
-      overflow: hidden;
-      background: linear-gradient(-45deg, #000000, #002b11, #004d26, #000000);
-      background-size: 400% 400%;
-      animation: gradientMove 15s ease infinite;
+    :root{
+      --bg: #000;
+      --text: #e0e0e0;
+      --accent: #ffffff; /* putih */
+      --bot-bg: #111;
+      --bot-border: #222;
+      --input-bg: #1a1a1a;
+      --sidebar-bg: #0d0d0d;
     }
-    @keyframes gradientMove {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+    body.light {
+      --bg: #f5f5f5;
+      --text: #111;
+      --accent: #000000;
+      --bot-bg: #fff;
+      --bot-border: #ddd;
+      --input-bg: #fff;
+      --sidebar-bg: #ddd;
     }
-    #chat-header {
-      background: rgba(0, 80, 40, 0.8);
-      padding: 20px;
-      font-size: 22px;
-      font-weight: bold;
-      text-align: center;
-      letter-spacing: 1px;
-      backdrop-filter: blur(6px);
-      box-shadow: 0 3px 10px rgba(0,0,0,0.6);
-      flex-shrink: 0;
+
+    /* Layout */
+    html,body{height:100%;margin:0;font-family:Inter, Arial, sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;transition:background .25s,color .25s}
+    /* header */
+    #chat-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bot-bg);border-bottom:1px solid var(--bot-border);z-index:4}
+    #chat-title{display:flex;align-items:center;gap:10px}
+    #chat-title img{width:28px;height:28px;animation:spin 20s linear infinite;filter:drop-shadow(0 0 6px #fff) drop-shadow(0 0 12px #fff);border-radius:6px}
+    #chat-title h1{font-size:16px;margin:0;color:var(--accent);letter-spacing:.2px}
+    #menu-btn{font-size:20px;background:none;border:none;color:var(--accent);cursor:pointer}
+
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+    /* Sidebar */
+    #sidebar{position:fixed;left:-300px;top:0;width:280px;height:100%;background:var(--sidebar-bg);border-right:1px solid var(--bot-border);box-shadow:2px 0 12px rgba(0,0,0,.5);transition:left .35s ease;z-index:12;display:flex;flex-direction:column}
+    #sidebar.show{left:0}
+    #sidebar header{padding:14px;background:var(--bot-bg);border-bottom:1px solid var(--bot-border);color:var(--accent);font-weight:600}
+    #sidebar .controls{display:flex;flex-direction:column;padding:12px;gap:8px}
+    #sidebar .controls button{background:var(--accent);color:var(--bg);border:none;padding:8px;border-radius:8px;cursor:pointer;font-weight:600;text-align:left}
+    #session-list{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+    .session-item{padding:8px;border-radius:8px;background:var(--bot-bg);border:1px solid var(--bot-border);cursor:pointer;color:var(--text);font-size:14px}
+    .session-item.active{outline:2px solid var(--accent)}
+
+    /* Overlay */
+    #overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:11}
+    #overlay.show{opacity:1;pointer-events:all}
+
+    /* Chat area */
+    #chat-box{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:8px}
+    .message{max-width:72%;padding:10px 14px;border-radius:12px;line-height:1.4;word-break:break-word;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+    .user{align-self:flex-end;background:var(--accent);color:var(--bg)}
+    .bot{align-self:flex-start;background:var(--bot-bg);border:1px solid var(--bot-border);color:var(--text);position:relative}
+    .thumbnail{display:block;margin-top:8px;max-width:220px;max-height:220px;border-radius:8px}
+
+    /* Skip button in bot message */
+    .bot .controls-inline{position:absolute;right:8px;top:8px}
+    .skip-btn{background:transparent;border:1px solid var(--bot-border);color:var(--text);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px}
+
+    /* Typing indicator (dots) */
+    .typing{display:inline-block}
+    .typing span{display:inline-block;width:6px;height:6px;margin:0 3px;background:var(--text);border-radius:50%;animation:blink 1.2s infinite}
+    .typing span:nth-child(2){animation-delay:.15s}
+    .typing span:nth-child(3){animation-delay:.3s}
+    @keyframes blink{0%{opacity:.2}20%{opacity:1}100%{opacity:.2}}
+
+    /* Input area */
+    #input-area{display:flex;gap:8px;padding:12px;background:var(--bot-bg);border-top:1px solid var(--bot-border)}
+    #user-input{flex:1;padding:10px;border-radius:8px;background:var(--input-bg);border:1px solid var(--bot-border);color:var(--text);outline:none}
+    #upload-btn, #send-btn{padding:10px 14px;border-radius:8px;border:none;background:var(--accent);color:var(--bg);font-weight:600;cursor:pointer}
+    #file-input{display:none}
+
+    /* small helper */
+    .muted{opacity:.7;font-size:13px;color:var(--text)}
+    .center{display:flex;align-items:center;justify-content:center}
+
+    /* responsive */
+    @media (max-width:720px){
+      #sidebar{width:100%;left:-100%}
+      #sidebar.show{left:0}
     }
-    #chat-box {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(4px);
-      scroll-behavior: smooth;
-    }
-    .msg-row { display: flex; align-items: flex-end; margin: 12px 0; }
-    .msg {
-      padding: 14px 16px;
-      border-radius: 14px;
-      max-width: 70%;
-      line-height: 1.5;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-      word-wrap: break-word;
-      animation: fadeIn 0.4s ease-in-out;
-    }
-    .user-row { justify-content: flex-end; animation: slideRight 0.4s ease; }
-    .bot-row { justify-content: flex-start; animation: slideLeft 0.4s ease; }
-    .user {
-      background: linear-gradient(135deg, #00b359, #006400);
-      color: white;
-      border-bottom-right-radius: 4px;
-    }
-    .bot {
-      background: #1a1a1a;
-      color: #e0e0e0;
-      border-bottom-left-radius: 4px;
-    }
-    .avatar {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 18px;
-      margin: 0 8px;
-      flex-shrink: 0;
-    }
-    .user-avatar { background: #006400; color: white; }
-    .bot-avatar { background: #333; color: #00ff88; }
-    #input-area {
-      display: flex;
-      border-top: 1px solid #1a3d1a;
-      background: rgba(0, 40, 20, 0.9);
-      padding: 10px;
-      align-items: center;
-      gap: 8px;
-      backdrop-filter: blur(4px);
-      flex-shrink: 0;
-      position: sticky;
-      bottom: 0;
-    }
-    #user-input {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      outline: none;
-      font-size: 15px;
-      border-radius: 10px;
-      background: #1a1a1a;
-      color: white;
-    }
-    #send-btn, #file-btn {
-      background: linear-gradient(135deg, #00b359, #006400);
-      color: white;
-      border: none;
-      padding: 10px 14px;
-      cursor: pointer;
-      border-radius: 10px;
-      transition: 0.3s;
-      font-size: 16px;
-      flex-shrink: 0;
-    }
-    #send-btn:hover, #file-btn:hover { background: linear-gradient(135deg, #00994d, #004d26); }
-    input[type="file"] { display: none; }
-    .typing { font-style: italic; color: #aaa; background: transparent !important; box-shadow: none !important; }
-    .file-preview {
-      max-width: 240px;
-      max-height: 180px;
-      display: block;
-      margin-top: 6px;
-      border-radius: 10px;
-    }
-    @keyframes fadeIn { from {opacity: 0; transform: translateY(10px);} to {opacity: 1; transform: translateY(0);} }
-    @keyframes slideRight { from {opacity: 0; transform: translateX(50px);} to {opacity: 1; transform: translateX(0);} }
-    @keyframes slideLeft { from {opacity: 0; transform: translateX(-50px);} to {opacity: 1; transform: translateX(0);} }
   </style>
 </head>
 <body>
-  <div id="chat-header">🤖 DOREMI CHATBOT AI</div>
-  <div id="chat-box"></div>
-  <div id="input-area">
-    <label for="file-input" id="file-btn">📎</label>
-    <input type="file" id="file-input" accept="image/*,.pdf,.txt,.doc,.docx"/>
-    <input type="text" id="user-input" placeholder="Tulis pesan...">
-    <button id="send-btn">➤</button>
+  <!-- OVERLAY -->
+  <div id="overlay"></div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar" aria-hidden="true">
+    <header>📂 Riwayat</header>
+    <div class="controls">
+      <button id="new-chat-btn">➕ Chat Baru</button>
+      <button id="clear-all-btn">🗑️ Hapus Semua</button>
+      <button id="mode-toggle">🌙/☀️ Mode</button>
+    </div>
+    <div id="session-list" aria-live="polite"></div>
+  </div>
+
+  <!-- HEADER -->
+  <div id="chat-header" role="banner">
+    <div id="chat-title">
+      <img id="logo" src="https://i.ibb.co.com/Xqs3GcX/e54e5ed852779f5-file-000000001480622fae6a64f7d16afabe-wm.png" alt="DoremiAI logo" />
+      <h1>DoremiAI ChatBot</h1>
+    </div>
+    <button id="menu-btn" aria-label="Open menu">☰</button>
+  </div>
+
+  <!-- CHAT BOX -->
+  <div id="chat-box" role="main" aria-live="polite"></div>
+
+  <!-- INPUT -->
+  <div id="input-area" role="region" aria-label="Input area">
+    <input id="user-input" placeholder="Tulis pesan atau keterangan gambar..." autocomplete="off" />
+    <input type="file" id="file-input" accept="image/*" />
+    <button id="upload-btn" title="Upload gambar">📷</button>
+    <button id="send-btn">Kirim</button>
   </div>
 
   <script>
-    const API_KEY = "AIzaSyACSidJfMSNYKI1N6SAKkUtxm92tslx8bE"; // ganti dengan API key Gemini
+    /************************************************************************
+     * NOTE:
+     * - Untuk demo cepat, API_KEY dimasukkan di sini. UNTUK PRODUKSI,
+     *   jangan taruh API key di frontend. Buat backend proxy yang menyimpan key.
+     ************************************************************************/
+    const API_KEY = "AIzaSyACSidJfMSNYKI1N6SAKkUtxm92tslx8bE"; // <-- Ganti dengan API key Gemini-mu (untuk testing lokal)
     const MODEL = "gemini-1.5-flash";
 
-    const chatBox = document.getElementById("chat-box");
-    const userInput = document.getElementById("user-input");
-    const sendBtn = document.getElementById("send-btn");
-    const fileInput = document.getElementById("file-input");
+    // DOM
+    const sidebar = document.getElementById('sidebar');
+    const menuBtn = document.getElementById('menu-btn');
+    const overlay = document.getElementById('overlay');
+    const sessionList = document.getElementById('session-list');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const clearAllBtn = document.getElementById('clear-all-btn');
+    const modeToggle = document.getElementById('mode-toggle');
+    const chatBox = document.getElementById('chat-box');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const uploadBtn = document.getElementById('upload-btn');
+    const fileInput = document.getElementById('file-input');
 
-    let selectedImageBase64 = null;
+    // State
+    let selectedImage = null; // {type, base64, preview}
+    let sessionId = localStorage.getItem('neoai_current_session') || Date.now().toString();
+    let allSessions = JSON.parse(localStorage.getItem('neoai_sessions') || '{}');
 
-    async function sendMessage(text, imageBase64 = null) {
-      if (!text && !imageBase64) return;
+    if (!allSessions[sessionId]) allSessions[sessionId] = []; // ensure current session exists
 
-      // tampilkan pesan user
-      const msgRow = addMessage(text, "user");
-      if (imageBase64) {
-        const msg = msgRow.querySelector(".msg");
-        const img = document.createElement("img");
-        img.src = imageBase64;
-        img.classList.add("file-preview");
-        msg.appendChild(img);
+    // Sidebar open/close
+    function openSidebar(){ sidebar.classList.add('show'); overlay.classList.add('show'); sidebar.setAttribute('aria-hidden','false'); }
+    function closeSidebar(){ sidebar.classList.remove('show'); overlay.classList.remove('show'); sidebar.setAttribute('aria-hidden','true'); }
+    menuBtn.addEventListener('click', openSidebar);
+    overlay.addEventListener('click', closeSidebar);
+
+    // Theme
+    if (localStorage.getItem('neoai_theme') === 'light') document.body.classList.add('light');
+    function toggleTheme(){
+      document.body.classList.toggle('light');
+      localStorage.setItem('neoai_theme', document.body.classList.contains('light') ? 'light' : 'dark');
+    }
+    modeToggle.addEventListener('click', toggleTheme);
+
+    // Session management
+    function saveSessions(){
+      localStorage.setItem('neoai_sessions', JSON.stringify(allSessions));
+    }
+    function setCurrentSession(id){
+      sessionId = id;
+      localStorage.setItem('neoai_current_session', sessionId);
+      renderSessionList();
+      loadSession(sessionId);
+    }
+    function newSession(){
+      const id = Date.now().toString();
+      allSessions[id] = [];
+      setCurrentSession(id);
+      closeSidebar();
+      // show a small system note
+      appendSystemMessage("✨ Chat baru dimulai.");
+    }
+    newChatBtn.addEventListener('click', newSession);
+
+    function clearAllSessions(){
+      if (!confirm('Hapus semua riwayat percakapan?')) return;
+      allSessions = {};
+      saveSessions();
+      renderSessionList();
+      chatBox.innerHTML = '';
+      sessionId = Date.now().toString();
+      allSessions[sessionId] = [];
+      localStorage.setItem('neoai_current_session', sessionId);
+      appendSystemMessage('🗑️ Semua riwayat telah dihapus.');
+      closeSidebar();
+    }
+    clearAllBtn.addEventListener('click', clearAllSessions);
+
+    function renderSessionList(){
+      sessionList.innerHTML = '';
+      saveSessions();
+      const ids = Object.keys(allSessions).sort((a,b)=> Number(b)-Number(a)); // newest first
+      ids.forEach(id=>{
+        const firstText = allSessions[id][0]?.text || 'Percakapan baru';
+        const item = document.createElement('div');
+        item.className = 'session-item' + (id===sessionId ? ' active' : '');
+        item.textContent = firstText.length > 28 ? firstText.slice(0,28) + '…' : firstText;
+        item.title = 'Klik untuk muat percakapan';
+        item.addEventListener('click', ()=>{
+          setCurrentSession(id);
+          closeSidebar();
+        });
+        sessionList.appendChild(item);
+      });
+    }
+
+    function loadSession(id){
+      chatBox.innerHTML = '';
+      const history = allSessions[id] || [];
+      history.forEach(msg=>{
+        renderMessage(msg, false);
+      });
+      // scroll bottom
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendSystemMessage(text){
+      const div = document.createElement('div');
+      div.className = 'message bot';
+      div.textContent = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Render message (used for load & live-add)
+    function renderMessage(msg, save=true){
+      const { text, sender, imageSrc } = msg;
+      const container = document.createElement('div');
+      container.className = 'message ' + sender;
+
+      // message text container
+      const textNode = document.createElement('div');
+      textNode.className = 'msg-text';
+      if (text) textNode.textContent = text;
+      container.appendChild(textNode);
+
+      if (imageSrc){
+        const img = document.createElement('img');
+        img.src = imageSrc;
+        img.className = 'thumbnail';
+        container.appendChild(img);
       }
-      userInput.value = "";
-      selectedImageBase64 = null;
 
-      // efek mengetik
-      const typingMsg = addMessage("Mengetik...", "bot", true);
+      // for bot messages, add a skip control placeholder (will be set when typing)
+      if (sender === 'bot'){
+        const controlsWrap = document.createElement('div');
+        controlsWrap.className = 'controls-inline';
+        container.appendChild(controlsWrap);
+      }
 
+      chatBox.appendChild(container);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      if (save){
+        if (!allSessions[sessionId]) allSessions[sessionId] = [];
+        allSessions[sessionId].push({ text, sender, imageSrc });
+        saveSessions();
+        renderSessionList();
+      }
+
+      return container;
+    }
+
+    // Upload handling (preview message, but not sent until Send)
+    uploadBtn.addEventListener('click', ()=> fileInput.click());
+    fileInput.addEventListener('change', ()=>{
+      const f = fileInput.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        selectedImage = {
+          type: f.type,
+          base64: reader.result.split(',')[1],
+          preview: reader.result
+        };
+        // show preview message (not saved to session yet)
+        const previewMsg = renderMessage({ text: '📷 Gambar dipilih. Tambahkan keterangan sebelum kirim.', sender: 'user', imageSrc: selectedImage.preview }, false);
+        // mark preview as temporary (so we can remove if new preview chosen)
+        previewMsg.dataset.preview = 'true';
+        // remove earlier previews
+        document.querySelectorAll('[data-preview="true"]').forEach((el, idx)=>{
+          if (idx < document.querySelectorAll('[data-preview="true"]').length - 1){
+            el.remove();
+          }
+        });
+      };
+      reader.readAsDataURL(f);
+    });
+
+    // Send message: handles text + optional selectedImage
+    sendBtn.addEventListener('click', handleSend);
+    userInput.addEventListener('keypress', (e)=> { if (e.key==='Enter') handleSend(); });
+
+    async function handleSend(){
+      const text = userInput.value.trim();
+      if (!text && !selectedImage) return; // nothing to send
+      if (selectedImage && !text){
+        alert('Tambahkan keterangan sebelum mengirim gambar!');
+        return;
+      }
+
+      // remove any temporary preview markers (they were not saved)
+      document.querySelectorAll('[data-preview="true"]').forEach(el=>el.remove());
+
+      // render user message (and save)
+      renderMessage({ text, sender: 'user', imageSrc: selectedImage ? selectedImage.preview : null }, true);
+      userInput.value = '';
+      // clear selectedImage (we already showed it)
+      const imageToSend = selectedImage;
+      selectedImage = null;
+
+      // show typing indicator (as a bot message)
+      const typingMsg = renderMessage({ text: null, sender: 'bot', imageSrc: null }, true); // saved as placeholder too
+      const typingDot = document.createElement('div');
+      typingDot.className = 'typing';
+      typingDot.innerHTML = '<span></span><span></span><span></span>';
+      // replace content
+      typingMsg.querySelector('.msg-text').innerHTML = '';
+      typingMsg.querySelector('.msg-text').appendChild(typingDot);
+
+      // call Gemini API
       try {
+        // prepare parts
         const parts = [];
-        if (text) parts.push({ text });
-        if (imageBase64) {
-          parts.push({
-            inline_data: {
-              mime_type: "image/png",
-              data: imageBase64.split(",")[1]
-            }
-          });
+        parts.push({ text });
+        if (imageToSend){
+          // include inline image data
+          parts.push({ inline_data: { mime_type: imageToSend.type, data: imageToSend.base64 }});
         }
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: [{ role: "user", parts }] })
+        const payload = { contents: [{ role: "user", parts }] };
+
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        const replyText = data?.candidates?.[0]?.content?.parts?.map(p=>p.text || '').join('') || '⚠️ Tidak ada jawaban';
+
+        // now replace typing indicator with typewriter effect + Skip button
+        const botContainer = typingMsg; // element to fill
+        const botTextDiv = botContainer.querySelector('.msg-text');
+        botTextDiv.innerHTML = ''; // clear typing dots
+
+        // create skip button and wire behavior
+        const controlsWrap = botContainer.querySelector('.controls-inline');
+        controlsWrap.innerHTML = '';
+        const skipBtn = document.createElement('button');
+        skipBtn.className = 'skip-btn';
+        skipBtn.textContent = 'Skip';
+        controlsWrap.appendChild(skipBtn);
+
+        // Typewriter effect with cancel capability
+        let cancelled = false;
+        skipBtn.addEventListener('click', ()=>{
+          cancelled = true;
+          botTextDiv.textContent = replyText;
+          // after skip, remove skip button
+          controlsWrap.remove();
+          // update saved session last message (replace placeholder saved text null => actual)
+          replaceLastSavedBotMessage(sessionId, replyText);
+        });
+
+        // start typing
+        await typeWriter(botTextDiv, replyText, 18, ()=>{
+          // on complete: remove skip button
+          if (controlsWrap) controlsWrap.remove();
+          // update saved session last message
+          replaceLastSavedBotMessage(sessionId, replyText);
+        }, ()=> cancelled);
+
+      } catch (err){
+        // show error in typing message
+        typingMsg.querySelector('.msg-text').textContent = '❌ Error: ' + (err.message || err);
+        // update saved session
+        replaceLastSavedBotMessage(sessionId, typingMsg.querySelector('.msg-text').textContent);
+      } finally {
+        // ensure we update UI
+        chatBox.scrollTop = chatBox.scrollHeight;
+        renderSessionList();
+      }
+    }
+
+    // replace the last saved bot message (placeholder) with actual text
+    function replaceLastSavedBotMessage(sessionIdLocal, text){
+      const sess = allSessions[sessionIdLocal] || [];
+      // find last index with sender 'bot' where text was null or typing placeholder
+      for (let i = sess.length-1; i>=0; i--){
+        if (sess[i].sender === 'bot'){
+          sess[i].text = text;
+          saveSessions();
+          return;
+        }
+      }
+      // if not found, push
+      sess.push({ text, sender: 'bot', imageSrc: null});
+      saveSessions();
+    }
+
+    // typewriter helper (returns promise)
+    function typeWriter(container, text, speed=25, onDone=()=>{}, isCancelled=()=>false){
+      return new Promise(resolve=>{
+        let i = 0;
+        function step(){
+          if (isCancelled()){
+            resolve();
+            onDone();
+            return;
           }
-        );
+          if (i < text.length){
+            container.textContent += text.charAt(i);
+            i++;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            setTimeout(step, speed);
+          } else {
+            resolve();
+            onDone();
+          }
+        }
+        step();
+      });
+    }
 
-        const data = await response.json();
-        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, saya tidak bisa menjawab.";
-
-        typingMsg.remove();
-        typeEffect(reply, "bot");
-      } catch (err) {
-        console.error(err);
-        typingMsg.remove();
-        addMessage("Terjadi kesalahan, coba lagi.", "bot");
+    // render an initial message if session empty
+    function ensureIntro(){
+      const s = allSessions[sessionId] || [];
+      if (s.length === 0){
+        renderMessage({ text: 'Halo! Saya DoremiAI. Tanyakan apapun atau upload foto dengan keterangan.', sender: 'bot' }, true);
       }
     }
 
-    function addMessage(text, sender, isTyping = false) {
-      const row = document.createElement("div");
-      row.classList.add("msg-row", sender + "-row");
+    // render existing data on load
+    function init(){
+      if (!allSessions[sessionId]) { allSessions[sessionId]=[]; saveSessions(); }
+      renderSessionList();
+      loadSession(sessionId);
+      ensureIntro();
+    }
 
-      const avatar = document.createElement("div");
-      avatar.classList.add("avatar", sender + "-avatar");
-      avatar.innerText = sender === "user" ? "👤" : "🤖";
+    // helper to render message object (used earlier) - ensure existing saved messages show properly
+    // we already have renderMessage, but loadSession uses it.
 
-      const msg = document.createElement("div");
-      msg.classList.add("msg", sender);
-      if (isTyping) msg.classList.add("typing");
-      msg.innerText = text;
-
-      if (sender === "user") {
-        row.appendChild(msg);
-        row.appendChild(avatar);
-      } else {
-        row.appendChild(avatar);
-        row.appendChild(msg);
+    // allow deleting single session via long-press (optional) - here add context menu
+    sessionList.addEventListener('contextmenu', (ev)=>{
+      ev.preventDefault();
+      const target = ev.target.closest('.session-item');
+      if (!target) return;
+      const index = Array.from(sessionList.children).indexOf(target);
+      const ids = Object.keys(allSessions).sort((a,b)=> Number(b)-Number(a));
+      const id = ids[index];
+      if (!id) return;
+      if (confirm('Hapus session ini?')){
+        delete allSessions[id];
+        saveSessions();
+        // if deleted current, create new session
+        if (id === sessionId){
+          sessionId = Date.now().toString();
+          allSessions[sessionId] = [];
+          localStorage.setItem('neoai_current_session', sessionId);
+        }
+        renderSessionList();
+        loadSession(sessionId);
       }
-
-      chatBox.appendChild(row);
-      autoScroll();
-      return row;
-    }
-
-    function typeEffect(text, sender) {
-      const row = document.createElement("div");
-      row.classList.add("msg-row", sender + "-row");
-
-      const avatar = document.createElement("div");
-      avatar.classList.add("avatar", sender + "-avatar");
-      avatar.innerText = sender === "user" ? "👤" : "🤖";
-
-      const msg = document.createElement("div");
-      msg.classList.add("msg", sender);
-
-      if (sender === "user") {
-        row.appendChild(msg);
-        row.appendChild(avatar);
-      } else {
-        row.appendChild(avatar);
-        row.appendChild(msg);
-      }
-      chatBox.appendChild(row);
-
-      let i = 0;
-      const interval = setInterval(() => {
-        msg.innerText = text.slice(0, i++);
-        autoScroll();
-        if (i > text.length) clearInterval(interval);
-      }, 18);
-    }
-
-    function autoScroll() {
-      chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
-    }
-
-    sendBtn.addEventListener("click", () => {
-      sendMessage(userInput.value, selectedImageBase64);
-    });
-    userInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") sendMessage(userInput.value, selectedImageBase64);
     });
 
-    fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    // small utility to append message (not saved) - used for system notes
+    function appendSystemMessage(text){
+      const el = document.createElement('div');
+      el.className = 'message bot';
+      el.textContent = text;
+      chatBox.appendChild(el);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
 
-      if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          selectedImageBase64 = event.target.result;
-          addMessage("📷 Foto dipilih. Silakan tulis pertanyaan atau instruksi, lalu tekan kirim.", "bot");
-        };
-        reader.readAsDataURL(file);
-      } else {
-        addMessage(`📎 File dipilih: ${file.name}. Silakan tulis keterangan lalu kirim.`, "bot");
-      }
-      fileInput.value = "";
-    });
+    // init
+    init();
   </script>
 </body>
 </html>
